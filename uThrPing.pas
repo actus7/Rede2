@@ -123,7 +123,7 @@ begin
       for i := lstIPs.Count - 1 downto 0 do
       begin
         ParcialIP := Explode(lstIPs[i], '.')[0] + '.' + Explode(lstIPs[i], '.')[1] + '.' + Explode(lstIPs[i], '.')[2];
-        if CreateProcess(nil, PChar('cmd.exe /C ping -n 1 -w 101 ' + ParcialIP + IntTOStr(_Posicao)), nil, nil, False, 0, nil, nil, si, pi) then
+        if CreateProcess(nil, PChar('cmd.exe /C ping -n 1 -w 101 ' + ParcialIP + '.' + IntTOStr(_Posicao)), nil, nil, False, 0, nil, nil, si, pi) then
         begin
           CloseHandle(pi.hThread);
           CloseHandle(pi.hProcess);
