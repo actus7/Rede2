@@ -8,9 +8,6 @@ uses
 
 type
   TThrPing = class(TThread)
-  private
-    { Private declarations }
-    FListLock: TCriticalSection;
   protected
     _Inicio, _Fim: Integer;
     procedure Execute; override;
