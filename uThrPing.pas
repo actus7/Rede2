@@ -3,18 +3,10 @@ unit uThrPing;
 interface
 
 uses
-  System.Types, System.TypInfo, System.StrUtils, Winapi.Windows, System.SysUtils,
-  Classes, Winapi.WinSock, System.SyncObjs, IdSync;
+  System.Classes, System.SysUtils, Winapi.ActiveX, System.Win.ComObj, System.Variants,
+  System.Types, System.TypInfo, System.StrUtils, Winapi.Windows, Winapi.WinSock;
 
 type
-  TCreateProcess = class(TIdNotify)
-  protected
-    FIp: string;
-    procedure DoNotify; override;
-  public
-    class procedure MyCreateProcess(const aIp: String);
-  end;
-
   TThrPing = class(TThread)
   protected
     _Inicio, _Fim: Integer;
@@ -65,6 +57,24 @@ begin
   end;
 end;
 
+procedure PingStatusInfo(TempIP: String);
+const
+  WbemUser = '';
+  WbemPassword = '';
+  WbemComputer = 'localhost';
+  wbemFlagForwardOnly = $00000020;
+var
+  FSWbemLocator: OLEVariant;
+  FWMIService: OLEVariant;
+  FWbemObjectSet: OLEVariant;
+begin;
+  FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
+  FWMIService := FSWbemLocator.ConnectServer(WbemComputer, 'root\CIMV2', WbemUser, WbemPassword);
+  FWbemObjectSet := FWMIService.ExecQuery('SELECT * FROM Win32_PingStatus where Address=' + QuotedStr(TempIP) + ' AND BufferSize=1 and Timeout=102', 'WQL',
+    wbemFlagForwardOnly);
+  FWbemObjectSet := Unassigned;
+end;
+
 procedure TThrPing.Execute;
 Type
   PTA = array [0 .. 0] of Pointer;
@@ -77,13 +87,9 @@ Var
   wsaData: TWSAData;
   addr: TInaddr;
 
-  si: TStartupInfo;
-  pi: TProcessInformation;
-  LocalIP, ParcialIP: string;
+  ParcialIP: string;
 begin
   _Posicao := _Inicio;
-  ZeroMemory(@si, sizeof(si));
-  si.cb := sizeof(si);
 
   FillChar(phe, sizeof(phe), 0);
   if WSAStartUp(MAKEWORD(1, 1), wsaData) <> 0 Then
@@ -114,8 +120,6 @@ begin
   end;
   WSACleanup;
 
-  si.wShowWindow := SW_HIDE;
-  si.dwFlags := STARTF_USESHOWWINDOW;
   while (not Terminated) do
   begin
     if (_Posicao >= _Fim) then
@@ -125,50 +129,23 @@ begin
     end
     else
     begin
-
-      for i := lstIPs.Count - 1 downto 0 do
-      begin
-        ParcialIP := Explode(lstIPs[i], '.')[0] + '.' + Explode(lstIPs[i], '.')[1] + '.' + Explode(lstIPs[i], '.')[2];
-        // TCreateProcess.MyCreateProcess(ParcialIP + '.' + IntToStr(_Posicao));
-        if CreateProcess(nil, PChar('cmd.exe /C ping -n 1 -w 101 ' + ParcialIP + '.' + IntTOStr(_Posicao)), nil, nil, False, 0, nil, nil, si, pi) then
-        begin
-          CloseHandle(pi.hThread);
-          CloseHandle(pi.hProcess);
+      try
+        CoInitialize(nil);
+        try
+          for i := lstIPs.Count - 1 downto 0 do
+          begin
+            ParcialIP := Explode(lstIPs[i], '.')[0] + '.' + Explode(lstIPs[i], '.')[1] + '.' + Explode(lstIPs[i], '.')[2] + '.' + IntToStr(_Posicao);
+            PingStatusInfo(ParcialIP);
+          end;
+        finally
+          CoUninitialize;
         end;
+      except
       end;
       Inc(_Posicao);
     end;
-    Sleep(102);
+    Sleep(50);
   end;
-end;
-
-{ TCreateProcess }
-
-class procedure TCreateProcess.MyCreateProcess(const aIp: String);
-begin
-  with TCreateProcess.Create do
-    try
-      FIp := aIp;
-      Notify;
-    except
-      Free;
-      raise;
-    end;
-end;
-
-procedure TCreateProcess.DoNotify;
-var
-  si: TStartupInfo;
-  pi: TProcessInformation;
-begin
-  // si.wShowWindow := SW_HIDE;
-  // si.dwFlags := STARTF_USESHOWWINDOW;
-  if CreateProcess(nil, PChar('cmd.exe /C ping -n 1 -w 101 ' + FIp), nil, nil, False, 0, nil, nil, si, pi) then
-  begin
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-  end;
-
 end;
 
 end.
