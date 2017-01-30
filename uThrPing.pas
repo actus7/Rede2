@@ -4,9 +4,17 @@ interface
 
 uses
   System.Types, System.TypInfo, System.StrUtils, Winapi.Windows, System.SysUtils,
-  Classes, Winapi.WinSock, System.SyncObjs;
+  Classes, Winapi.WinSock, System.SyncObjs, IdSync;
 
 type
+  TCreateProcess = class(TIdNotify)
+  protected
+    FIp: string;
+    procedure DoNotify; override;
+  public
+    class procedure MyCreateProcess(const aIp: String);
+  end;
+
   TThrPing = class(TThread)
   protected
     _Inicio, _Fim: Integer;
@@ -106,6 +114,8 @@ begin
   end;
   WSACleanup;
 
+  si.wShowWindow := SW_HIDE;
+  si.dwFlags := STARTF_USESHOWWINDOW;
   while (not Terminated) do
   begin
     if (_Posicao >= _Fim) then
@@ -115,11 +125,11 @@ begin
     end
     else
     begin
-      si.wShowWindow := SW_HIDE;
-      si.dwFlags := STARTF_USESHOWWINDOW;
+
       for i := lstIPs.Count - 1 downto 0 do
       begin
         ParcialIP := Explode(lstIPs[i], '.')[0] + '.' + Explode(lstIPs[i], '.')[1] + '.' + Explode(lstIPs[i], '.')[2];
+        // TCreateProcess.MyCreateProcess(ParcialIP + '.' + IntToStr(_Posicao));
         if CreateProcess(nil, PChar('cmd.exe /C ping -n 1 -w 101 ' + ParcialIP + '.' + IntTOStr(_Posicao)), nil, nil, False, 0, nil, nil, si, pi) then
         begin
           CloseHandle(pi.hThread);
@@ -130,6 +140,35 @@ begin
     end;
     Sleep(102);
   end;
+end;
+
+{ TCreateProcess }
+
+class procedure TCreateProcess.MyCreateProcess(const aIp: String);
+begin
+  with TCreateProcess.Create do
+    try
+      FIp := aIp;
+      Notify;
+    except
+      Free;
+      raise;
+    end;
+end;
+
+procedure TCreateProcess.DoNotify;
+var
+  si: TStartupInfo;
+  pi: TProcessInformation;
+begin
+  // si.wShowWindow := SW_HIDE;
+  // si.dwFlags := STARTF_USESHOWWINDOW;
+  if CreateProcess(nil, PChar('cmd.exe /C ping -n 1 -w 101 ' + FIp), nil, nil, False, 0, nil, nil, si, pi) then
+  begin
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+  end;
+
 end;
 
 end.
