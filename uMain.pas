@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, uThrPing, Vcl.ExtCtrls, WinSock,
-  Winapi.ShellApi, Vcl.WinXCtrls, Vcl.ComCtrls, Vcl.Grids, UxTheme, Math;
+  Winapi.ShellApi, Vcl.WinXCtrls, Vcl.ComCtrls, Vcl.Grids, UxTheme, Math, Clipbrd;
 
 type
   TForm2 = class(TForm)
@@ -191,7 +191,7 @@ begin
     Counter := FixedRows;
     For I := FixedRows To RowCount - 1 Do
     Begin
-      if not(pos(Exp, Cells[ACol, I]) > 0) then
+      if not(Pos(Exp, Cells[ACol, I]) > 0) then
       Begin
         Rows[I].Clear;
       end
@@ -230,24 +230,24 @@ const
   PADDING = 4;
 var
   h: HTHEME;
-  s: TSize;
+  S: TSize;
   r: TRect;
 begin
   if (ACol = 3) and (ARow >= 1) then
   begin
     FillRect(StringGrid1.Canvas.Handle, Rect, GetStockObject(WHITE_BRUSH));
-    s.cx := GetSystemMetrics(SM_CXMENUCHECK);
-    s.cy := GetSystemMetrics(SM_CYMENUCHECK);
+    S.cx := GetSystemMetrics(SM_CXMENUCHECK);
+    S.cy := GetSystemMetrics(SM_CYMENUCHECK);
     if UseThemes then
     begin
       h := OpenThemeData(StringGrid1.Handle, 'BUTTON');
       if h <> 0 then
         try
-          GetThemePartSize(h, StringGrid1.Canvas.Handle, BP_CHECKBOX, CBS_CHECKEDNORMAL, nil, TS_DRAW, s);
-          r.Top := Rect.Top + (Rect.Bottom - Rect.Top - s.cy) div 2;
-          r.Bottom := r.Top + s.cy;
+          GetThemePartSize(h, StringGrid1.Canvas.Handle, BP_CHECKBOX, CBS_CHECKEDNORMAL, nil, TS_DRAW, S);
+          r.Top := Rect.Top + (Rect.Bottom - Rect.Top - S.cy) div 2;
+          r.Bottom := r.Top + S.cy;
           r.Left := Rect.Left + PADDING;
-          r.Right := r.Left + s.cx;
+          r.Right := r.Left + S.cx;
           if (StringGrid1.Cells[ACol, ARow] = 'OK') then
             DrawThemeBackground(h, StringGrid1.Canvas.Handle, BP_CHECKBOX, CBS_CHECKEDNORMAL, r, nil)
           else
@@ -258,10 +258,10 @@ begin
     end
     else
     begin
-      r.Top := Rect.Top + (Rect.Bottom - Rect.Top - s.cy) div 2;
-      r.Bottom := r.Top + s.cy;
+      r.Top := Rect.Top + (Rect.Bottom - Rect.Top - S.cy) div 2;
+      r.Bottom := r.Top + S.cy;
       r.Left := Rect.Left + PADDING;
-      r.Right := r.Left + s.cx;
+      r.Right := r.Left + S.cx;
 
       if (StringGrid1.Cells[ACol, ARow] = 'OK') then
         DrawFrameControl(StringGrid1.Canvas.Handle, r, DFC_BUTTON, DFCS_BUTTONCHECK or DFCS_CHECKED)
@@ -275,6 +275,8 @@ end;
 procedure TForm2.tmrARPTimer(Sender: TObject);
 var
   I: Integer;
+  c, r: Integer;
+  S: string;
 begin
   for I := ListaThreads.Count - 1 downto 0 do
   begin

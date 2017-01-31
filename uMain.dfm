@@ -113,9 +113,9 @@ object Form2: TForm2
         24)
     end
     object SearchBox1: TSearchBox
-      Left = 121
+      Left = 109
       Top = 60
-      Width = 298
+      Width = 310
       Height = 21
       TabOrder = 4
       OnInvokeSearch = SearchBox1InvokeSearch
