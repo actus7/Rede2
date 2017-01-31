@@ -20,7 +20,6 @@ type
     StringGrid1: TStringGrid;
     SearchBox1: TSearchBox;
     Label2: TLabel;
-    StringGrid2: TStringGrid;
     procedure Button1Click(Sender: TObject);
     procedure tmrARPTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);

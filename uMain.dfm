@@ -45,25 +45,6 @@ object Form2: TForm2
       Height = 13
       Caption = 'Filtrar por Coluna:'
     end
-    object StringGrid2: TStringGrid
-      Left = 17
-      Top = 87
-      Width = 402
-      Height = 338
-      ColCount = 4
-      DefaultColWidth = 110
-      FixedCols = 0
-      RowCount = 2
-      FixedRows = 0
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine]
-      TabOrder = 5
-      Visible = False
-      OnClick = StringGrid1Click
-      OnDrawCell = StringGrid1DrawCell
-      RowHeights = (
-        24
-        24)
-    end
     object Memo1: TMemo
       Left = 40
       Top = 87
