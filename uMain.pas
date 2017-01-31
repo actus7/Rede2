@@ -106,6 +106,7 @@ var
   IJump: Integer;
   Limite: Integer;
 begin
+  Label1.Caption := '00:00:00';
   INICIO := StrToDateTime(Label1.Caption);
   TimeOld := Now;
   tmrCron.Enabled := True;
