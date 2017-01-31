@@ -16,6 +16,7 @@ type
     Button1: TButton;
     tmrCron: TTimer;
     Label1: TLabel;
+    ListBox1: TListBox;
     procedure Button1Click(Sender: TObject);
     procedure tmrARPTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -112,13 +113,12 @@ begin
   tmrCron.Enabled := True;
 
   Panel1.Enabled := False;
-
   aiARP.Visible := True;
   aiARP.Animate := True;
   Memo1.Lines.Add('Limpando Cache ARP');
   Memo1.Lines.Add(GetDosOutput('arp -d'));
   Memo1.Lines.Add('Disparando Pings');
-
+  ListBox1.Items.Assign(Memo1.Lines);
   IJump := 1;
   Limite := 254;
   repeat
@@ -181,6 +181,8 @@ begin
     Panel1.Enabled := True;
     tmrCron.Enabled := False;
     tmrARP.Enabled := False;
+    ListBox1.Clear;
+    ListBox1.Items.Assign(Memo1.Lines);
   end;
 end;
 
