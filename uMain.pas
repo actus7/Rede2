@@ -20,6 +20,7 @@ type
     StringGrid1: TStringGrid;
     SearchBox1: TSearchBox;
     Label2: TLabel;
+    StringGrid2: TStringGrid;
     procedure Button1Click(Sender: TObject);
     procedure tmrARPTimer(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -190,7 +191,7 @@ begin
     Counter := FixedRows;
     For I := FixedRows To RowCount - 1 Do
     Begin
-      if not (pos(Exp, Cells[ACol, I]) > 0) then
+      if not(pos(Exp, Cells[ACol, I]) > 0) then
       Begin
         Rows[I].Clear;
       end
