@@ -190,7 +190,7 @@ begin
     Counter := FixedRows;
     For I := FixedRows To RowCount - 1 Do
     Begin
-      If Cells[ACol, I] <> Exp Then
+      if not (pos(Exp, Cells[ACol, I]) > 0) then
       Begin
         Rows[I].Clear;
       end
