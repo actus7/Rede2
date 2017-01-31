@@ -4,7 +4,8 @@ interface
 
 uses
   System.Classes, System.SysUtils, Winapi.ActiveX, System.Win.ComObj, System.Variants,
-  System.Types, System.TypInfo, System.StrUtils, Winapi.Windows, Winapi.WinSock;
+  System.Types, System.TypInfo, System.StrUtils, Winapi.Windows, Winapi.WinSock,
+  System.RegularExpressions;
 
 type
   TThrPing = class(TThread)
@@ -15,6 +16,7 @@ type
     _Posicao: Integer;
     lstIPs: TStringList;
     constructor Create(AInicio, AFim: Integer);
+    procedure PingStatusInfo;
   end;
 
 implementation
@@ -57,7 +59,20 @@ begin
   end;
 end;
 
-procedure PingStatusInfo(TempIP: String);
+function IsWrongIP(ip: string): Boolean;
+var
+  ipRegExp: String;
+begin
+  Result := False;
+  try
+    ipRegExp := '\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b';
+    if TRegEx.IsMatch(ip, ipRegExp) then
+      Result := True;
+  except
+  end;
+end;
+
+procedure TThrPing.PingStatusInfo;
 const
   WbemUser = '';
   WbemPassword = '';
@@ -67,58 +82,38 @@ var
   FSWbemLocator: OLEVariant;
   FWMIService: OLEVariant;
   FWbemObjectSet: OLEVariant;
+
+  FWbemObject: OLEVariant;
+  oEnum: IEnumvariant;
+  iValue: LongWord;
+  TempIP2: String;
+  I: Integer;
+  ParcialIP: string;
 begin;
   FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
   FWMIService := FSWbemLocator.ConnectServer(WbemComputer, 'root\CIMV2', WbemUser, WbemPassword);
-  FWbemObjectSet := FWMIService.ExecQuery('SELECT * FROM Win32_PingStatus where Address=' + QuotedStr(TempIP) + ' AND BufferSize=1 and Timeout=102', 'WQL',
-    wbemFlagForwardOnly);
+
+  FWbemObjectSet := FWMIService.ExecQuery('SELECT IPAddress FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = "True"', 'WQL', wbemFlagForwardOnly);
+  oEnum := IUnknown(FWbemObjectSet._NewEnum) as IEnumvariant;
+  while oEnum.Next(1, FWbemObject, iValue) = 0 do
+  begin
+    if not VarIsClear(FWbemObject.IPAddress) and not VarIsNull(FWbemObject.IPAddress) then
+      for I := VarArrayLowBound(FWbemObject.IPAddress, 1) to VarArrayHighBound(FWbemObject.IPAddress, 1) do
+        if IsWrongIP(String(FWbemObject.IPAddress[I])) then
+          lstIPs.Add(String(FWbemObject.IPAddress[I]));
+  end;
+  for I := lstIPs.Count - 1 downto 0 do
+  begin
+    ParcialIP := Explode(lstIPs[I], '.')[0] + '.' + Explode(lstIPs[I], '.')[1] + '.' + Explode(lstIPs[I], '.')[2] + '.' + IntToStr(_Posicao);
+    FWbemObjectSet := FWMIService.ExecQuery('SELECT * FROM Win32_PingStatus where Address=' + QuotedStr(ParcialIP) + ' AND BufferSize=1 and Timeout=102', 'WQL',
+      wbemFlagForwardOnly);
+  end;
   FWbemObjectSet := Unassigned;
 end;
 
 procedure TThrPing.Execute;
-Type
-  PTA = array [0 .. 0] of Pointer;
-  PTS = ^PTA;
-Var
-  phe: Thostent;
-  pphe: PhostEnt;
-  ac: String[255];
-  i: Integer;
-  wsaData: TWSAData;
-  addr: TInaddr;
-
-  ParcialIP: string;
 begin
   _Posicao := _Inicio;
-
-  FillChar(phe, sizeof(phe), 0);
-  if WSAStartUp(MAKEWORD(1, 1), wsaData) <> 0 Then
-  begin
-    // Memo2.Lines.Add(' Failed to Start a socket');
-    exit;
-  end;
-  if GetHostName(@ac[1], 254) = SOCKET_ERROR Then
-  begin
-    // Memo2.Lines.Add(IntTOStr(WSAGetLastError) + ': Error when getting local Host ');
-    WSACleanup;
-    exit;
-  end;
-  i := 1;
-  while (ac[1] <> #0) and (i < 255) do
-    Inc(i);
-  ac[0] := AnsiChar(i - 1);
-  // Memo2.Lines.Add('Host Name :' + ac);
-  pphe := GetHostByName(@ac[1]);
-  phe := pphe^;
-  i := 0;
-  while PTS(phe.h_addr_list)^[i] <> nil do
-  begin
-    copymemory(@addr, PTS(phe.h_addr_list)^[i], sizeof(TInaddr));
-    // Memo2.Lines.Add('Address: ' + inet_ntoa(addr));
-    lstIPs.Add(inet_ntoa(addr));
-    Inc(i);
-  end;
-  WSACleanup;
 
   while (not Terminated) do
   begin
@@ -132,11 +127,7 @@ begin
       try
         CoInitialize(nil);
         try
-          for i := lstIPs.Count - 1 downto 0 do
-          begin
-            ParcialIP := Explode(lstIPs[i], '.')[0] + '.' + Explode(lstIPs[i], '.')[1] + '.' + Explode(lstIPs[i], '.')[2] + '.' + IntToStr(_Posicao);
-            PingStatusInfo(ParcialIP);
-          end;
+          PingStatusInfo;
         finally
           CoUninitialize;
         end;
