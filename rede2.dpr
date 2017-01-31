@@ -3,7 +3,9 @@ program rede2;
 uses
   Vcl.Forms,
   uMain in 'uMain.pas' {Form2},
-  uThrPing in 'uThrPing.pas';
+  uThrPing in 'uThrPing.pas',
+  Vcl.Themes,
+  Vcl.Styles;
 
 {$R *.res}
 
