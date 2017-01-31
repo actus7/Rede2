@@ -4,16 +4,19 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, uThrPing, Vcl.ExtCtrls, WinSock;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, uThrPing, Vcl.ExtCtrls, WinSock,
+  Vcl.WinXCtrls;
 
 type
   TForm2 = class(TForm)
-    Button1: TButton;
+    tmrARP: TTimer;
+    Panel1: TPanel;
+    aiARP: TActivityIndicator;
     Memo1: TMemo;
-    Memo2: TMemo;
-    Button3: TButton;
+    Button1: TButton;
     procedure Button1Click(Sender: TObject);
-    procedure Button3Click(Sender: TObject);
+    procedure tmrARPTimer(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
     ThrPing: TThrPing;
@@ -84,7 +87,12 @@ end;
 
 procedure TForm2.Button1Click(Sender: TObject);
 begin
+  Panel1.Enabled := False;
+  aiARP.Visible := True;
+  aiARP.Animate := True;
+  Memo1.Lines.Add('Limpando Cache ARP');
   Memo1.Lines.Add(GetDosOutput('arp -d'));
+  Memo1.Lines.Add('Disparando Pings');
   TThrPing.Create(1, 20);
   TThrPing.Create(21, 40);
   TThrPing.Create(41, 60);
@@ -98,50 +106,22 @@ begin
   TThrPing.Create(201, 220);
   TThrPing.Create(221, 240);
   TThrPing.Create(241, 254);
-  Sleep(10000);
-  Memo1.Lines.Add(GetDosOutput('arp -a'));
+  Memo1.Lines.Add('Adquerindo Lista de IPs e MACs');
+  tmrARP.Enabled := True;
 end;
 
-procedure TForm2.Button3Click(Sender: TObject);
-Type
-  PTA = array [0 .. 0] of Pointer;
-  PTS = ^PTA;
-Var
-  phe: Thostent;
-  pphe: PhostEnt;
-  ac: String[255];
-  i: Integer;
-  wsaData: TWSAData;
-  addr: TInaddr;
+procedure TForm2.FormCreate(Sender: TObject);
 begin
-  Memo2.Clear;
-  FillChar(phe, SizeOf(phe), 0);
-  if WSAStartUp(MAKEWORD(1, 1), wsaData) <> 0 Then
-  begin
-    Memo2.Lines.Add(' Failed to Start a socket');
-    exit;
-  end;
-  if GetHostName(@ac[1], 254) = SOCKET_ERROR Then
-  begin
-    Memo2.Lines.Add(IntTOStr(WSAGetLastError) + ': Error when getting local Host ');
-    WSACleanup;
-    exit;
-  end;
-  i := 1;
-  while (ac[1] <> #0) and (i < 255) do
-    Inc(i);
-  ac[0] := AnsiChar(i - 1);
-  // Memo2.Lines.Add('Host Name :' + ac);
-  pphe := GetHostByName(@ac[1]);
-  phe := pphe^;
-  i := 0;
-  while PTS(phe.h_addr_list)^[i] <> nil do
-  begin
-    copymemory(@addr, PTS(phe.h_addr_list)^[i], SizeOf(TInaddr));
-    Memo2.Lines.Add('Address: ' + inet_ntoa(addr));
-    Inc(i);
-  end;
-  WSACleanup;
+  aiARP.Visible := False;
+end;
+
+procedure TForm2.tmrARPTimer(Sender: TObject);
+begin
+  Memo1.Lines.Add(GetDosOutput('arp -a'));
+  aiARP.Animate := False;
+  aiARP.Visible := False;
+  Panel1.Enabled := True;
+  tmrARP.Enabled := False;
 end;
 
 end.
