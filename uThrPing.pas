@@ -9,14 +9,17 @@ uses
 
 type
   TThrPing = class(TThread)
+  private
+    FStatus: Boolean;
+    _Posicao: Integer;
+    lstIPs: TStringList;
   protected
     _Inicio, _Fim: Integer;
     procedure Execute; override;
   public
-    _Posicao: Integer;
-    lstIPs: TStringList;
     constructor Create(AInicio, AFim: Integer);
     procedure PingStatusInfo;
+    property FimThread: Boolean read FStatus write FStatus;
   end;
 
 implementation
@@ -28,16 +31,18 @@ constructor TThrPing.Create(AInicio, AFim: Integer);
 var
   TD: PTypeData;
 begin
-  inherited Create(False);
+  inherited Create(True);
   // CTRL + ALT + T pra verificar a thread na lista
   TD := GetTypeData(Self.ClassInfo);
   if TD <> nil then
     Self.NameThreadForDebugging(Format('%s%d', [TD^.UnitName, Self.Handle]));
 
+  FimThread := False;
   lstIPs := TStringList.Create;
   _Inicio := AInicio;
   _Fim := AFim;
-  FreeOnTerminate := True;
+  // FreeOnTerminate := True;
+  // priority := tpTimeCritical;
 end;
 
 function Explode(Texto, Separador: string): TStringDynArray;
@@ -93,14 +98,17 @@ begin;
   FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
   FWMIService := FSWbemLocator.ConnectServer(WbemComputer, 'root\CIMV2', WbemUser, WbemPassword);
 
-  FWbemObjectSet := FWMIService.ExecQuery('SELECT IPAddress FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = "True"', 'WQL', wbemFlagForwardOnly);
-  oEnum := IUnknown(FWbemObjectSet._NewEnum) as IEnumvariant;
-  while oEnum.Next(1, FWbemObject, iValue) = 0 do
+  if lstIPs.Count = 0 then
   begin
-    if not VarIsClear(FWbemObject.IPAddress) and not VarIsNull(FWbemObject.IPAddress) then
-      for I := VarArrayLowBound(FWbemObject.IPAddress, 1) to VarArrayHighBound(FWbemObject.IPAddress, 1) do
-        if IsWrongIP(String(FWbemObject.IPAddress[I])) then
-          lstIPs.Add(String(FWbemObject.IPAddress[I]));
+    FWbemObjectSet := FWMIService.ExecQuery('SELECT IPAddress FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = "True"', 'WQL', wbemFlagForwardOnly);
+    oEnum := IUnknown(FWbemObjectSet._NewEnum) as IEnumvariant;
+    while oEnum.Next(1, FWbemObject, iValue) = 0 do
+    begin
+      if not VarIsClear(FWbemObject.IPAddress) and not VarIsNull(FWbemObject.IPAddress) then
+        for I := VarArrayLowBound(FWbemObject.IPAddress, 1) to VarArrayHighBound(FWbemObject.IPAddress, 1) do
+          if IsWrongIP(String(FWbemObject.IPAddress[I])) then
+            lstIPs.Add(String(FWbemObject.IPAddress[I]));
+    end;
   end;
   for I := lstIPs.Count - 1 downto 0 do
   begin
@@ -108,34 +116,33 @@ begin;
     FWbemObjectSet := FWMIService.ExecQuery('SELECT * FROM Win32_PingStatus where Address=' + QuotedStr(ParcialIP) + ' AND BufferSize=1 and Timeout=102', 'WQL',
       wbemFlagForwardOnly);
   end;
+  FWbemObject := Unassigned;
   FWbemObjectSet := Unassigned;
 end;
 
 procedure TThrPing.Execute;
 begin
   _Posicao := _Inicio;
-
+  lstIPs.Clear;
   while (not Terminated) do
   begin
     if (_Posicao >= _Fim) then
     begin
       lstIPs.Free;
-      Terminate;
+      FimThread := True;
+      // Terminate;
     end
     else
     begin
+      CoInitialize(nil);
       try
-        CoInitialize(nil);
-        try
-          PingStatusInfo;
-        finally
-          CoUninitialize;
-        end;
-      except
+        PingStatusInfo;
+        Inc(_Posicao);
+      finally
+        CoUninitialize;
       end;
-      Inc(_Posicao);
     end;
-    Sleep(50);
+    Sleep(100);
   end;
 end;
 

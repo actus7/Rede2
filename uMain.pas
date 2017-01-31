@@ -14,12 +14,21 @@ type
     aiARP: TActivityIndicator;
     Memo1: TMemo;
     Button1: TButton;
+    tmrCron: TTimer;
+    Label1: TLabel;
     procedure Button1Click(Sender: TObject);
     procedure tmrARPTimer(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure tmrCronTimer(Sender: TObject);
   private
     { Private declarations }
     ThrPing: TThrPing;
+    ListaThreads: TList;
+    fThreads: Integer;
+    TimeOld: TDateTime;
+    INICIO: TDateTime;
+    procedure AdicionaThread(Item: TThread);
   public
     { Public declarations }
   end;
@@ -85,43 +94,98 @@ begin
   end;
 end;
 
-procedure TForm2.Button1Click(Sender: TObject);
+procedure TForm2.AdicionaThread(Item: TThread);
 begin
+  Inc(fThreads);
+  ListaThreads.Add(Item);
+  Item.Start;
+end;
+
+procedure TForm2.Button1Click(Sender: TObject);
+var
+  IJump: Integer;
+  Limite: Integer;
+begin
+  INICIO := StrToDateTime(Label1.Caption);
+  TimeOld := Now;
+  tmrCron.Enabled := True;
+
   Panel1.Enabled := False;
+
   aiARP.Visible := True;
   aiARP.Animate := True;
   Memo1.Lines.Add('Limpando Cache ARP');
   Memo1.Lines.Add(GetDosOutput('arp -d'));
   Memo1.Lines.Add('Disparando Pings');
-  TThrPing.Create(1, 20);
-  TThrPing.Create(21, 40);
-  TThrPing.Create(41, 60);
-  TThrPing.Create(61, 80);
-  TThrPing.Create(81, 100);
-  TThrPing.Create(101, 120);
-  TThrPing.Create(121, 140);
-  TThrPing.Create(141, 160);
-  TThrPing.Create(161, 180);
-  TThrPing.Create(181, 200);
-  TThrPing.Create(201, 220);
-  TThrPing.Create(221, 240);
-  TThrPing.Create(241, 254);
-  Memo1.Lines.Add('Adquerindo Lista de IPs e MACs');
+
+  IJump := 1;
+  Limite := 254;
+  repeat
+    if (IJump + 21) > Limite then
+    begin
+      // Memo1.Lines.Add('TThrPing.Create = ' + IntToStr(IJump) + ' <-> ' + IntToStr(Limite));
+      AdicionaThread(TThrPing.Create(IJump, Limite));
+    end
+    else
+    begin
+      // Memo1.Lines.Add('TThrPing.Create = ' + IntToStr(IJump) + ' <-> ' + IntToStr(IJump + 19));
+      AdicionaThread(TThrPing.Create(IJump, IJump + 19));
+    end;
+    IJump := IJump + 20;
+  until (IJump >= Limite);
+
+  Memo1.Lines.Add('Adquirindo Lista de IPs e MACs');
   tmrARP.Enabled := True;
 end;
 
-procedure TForm2.FormCreate(Sender: TObject);
+procedure TForm2.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  while ListaThreads.Count > 0 do
+  begin
+    tmrARPTimer(Sender);
+    Sleep(1000);
+  end;
+  ListaThreads.Free;
+end;
+
+procedure TForm2.FormShow(Sender: TObject);
+begin
+  ReportMemoryLeaksOnShutdown := True;
   aiARP.Visible := False;
+  ListaThreads := TList.Create;
 end;
 
 procedure TForm2.tmrARPTimer(Sender: TObject);
+var
+  I: Integer;
 begin
-  Memo1.Lines.Add(GetDosOutput('arp -a'));
-  aiARP.Animate := False;
-  aiARP.Visible := False;
-  Panel1.Enabled := True;
-  tmrARP.Enabled := False;
+  for I := ListaThreads.Count - 1 downto 0 do
+  begin
+    if TThrPing(ListaThreads[I]).FimThread then
+    begin
+      try
+        TThrPing(ListaThreads[I]).Destroy;
+      except
+        TerminateThread(TThrPing(ListaThreads[I]).Handle, 0);
+      end;
+      ListaThreads.Delete(I);
+      Dec(fThreads);
+    end;
+  end;
+  if ListaThreads.Count = 0 then
+  begin
+    Memo1.Lines.Add(GetDosOutput('arp -a'));
+    aiARP.Animate := False;
+    aiARP.Visible := False;
+    Panel1.Enabled := True;
+    tmrCron.Enabled := False;
+    tmrARP.Enabled := False;
+  end;
+end;
+
+procedure TForm2.tmrCronTimer(Sender: TObject);
+begin
+  Label1.Caption := 'Tempo do Processo: ' + FormatDateTime('HH:MM:SS', INICIO + Now - TimeOld);
 end;
 
 end.

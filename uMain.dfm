@@ -12,7 +12,8 @@ object Form2: TForm2
   Font.Style = []
   OldCreateOrder = False
   Position = poMainFormCenter
-  OnCreate = FormCreate
+  OnClose = FormClose
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
@@ -24,6 +25,14 @@ object Form2: TForm2
     TabOrder = 0
     ExplicitWidth = 745
     ExplicitHeight = 481
+    object Label1: TLabel
+      Left = 685
+      Top = 386
+      Width = 44
+      Height = 13
+      Alignment = taRightJustify
+      Caption = '00:00:00'
+    end
     object aiARP: TActivityIndicator
       Left = 340
       Top = 335
@@ -48,9 +57,15 @@ object Form2: TForm2
   end
   object tmrARP: TTimer
     Enabled = False
-    Interval = 20000
+    Interval = 6000
     OnTimer = tmrARPTimer
     Left = 608
     Top = 88
+  end
+  object tmrCron: TTimer
+    Enabled = False
+    OnTimer = tmrCronTimer
+    Left = 648
+    Top = 304
   end
 end
